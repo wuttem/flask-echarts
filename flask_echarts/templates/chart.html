@@ -1,0 +1,141 @@
+<link href="{{ url_for("echarts.slider_css") }}" rel="stylesheet" />
+<script
+src="https://code.jquery.com/jquery-3.4.1.min.js"
+integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
+crossorigin="anonymous"></script>
+<script
+src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"
+integrity="sha256-VazP97ZCwtekAsvgPBSUwPFKdrwD3unUfSGVYrahUqU="
+crossorigin="anonymous"></script>
+<script src="{{ url_for("echarts.echarts_lib_min") }}"></script>
+<script src="{{ url_for("echarts.slider_lib_min") }}"></script>
+
+<div>
+<div id="{{ chart_instance.ID }}" style="width: 100%; height:400px;"></div>
+<div style="width: 80%; margin: auto;" id="{{ chart_instance.ID }}_slider"></div>
+</div>
+
+<script>
+var days_back_{{ chart_instance.ID }} = {{ chart_instance.default_range() }};
+var c_{{ chart_instance.ID }} = null;
+var full_range_{{ chart_instance.ID }} = {{ chart_instance.get_iso_range_limits() | json }};
+var dt_min_{{ chart_instance.ID }} = Date.parse(full_range_{{ chart_instance.ID }}.min);
+var dt_max_{{ chart_instance.ID }} = Date.parse(full_range_{{ chart_instance.ID }}.max);
+var default_min_{{ chart_instance.ID }} = dt_max_{{ chart_instance.ID }} - (24*60*60*1000) * days_back_{{ chart_instance.ID }};
+var data_url_{{ chart_instance.ID }} = "{{ chart_instance.get_url() | safe }}";
+var data_range_{{ chart_instance.ID }} = [default_min_{{ chart_instance.ID }}, dt_max_{{ chart_instance.ID }}];
+var init_options_{{ chart_instance.ID }} = {{ chart_instance.build_options() | json }};
+
+function series_select_{{ chart_instance.ID }}() {
+
+}
+
+init_options_{{ chart_instance.ID }}['toolbox'].['feature']['series_select'] = {
+  show: true,
+  title: 'My custom feature',
+  icon: 'image:path/to/image-inactive.png'
+  onclick: function (){
+      // do something
+  }
+}
+
+function resize_c_{{ chart_instance.ID }}() {
+  if(c_{{ chart_instance.ID }} != null && c_{{ chart_instance.ID }} != undefined){
+      c_{{ chart_instance.ID }}.resize();
+  }
+}
+
+function zoom_c_{{ chart_instance.ID }}(f, t) {
+  var current_min = data_range_{{ chart_instance.ID }}[0];
+  var current_max = data_range_{{ chart_instance.ID }}[1];
+
+  if (f < current_min || t > current_max) {
+    // we need new data
+    c_{{ chart_instance.ID }}.showLoading();
+    var f_value = new Date(f);
+    f_value.setHours(0,0,0,0);
+    var t_value = new Date(t);
+    t_value.setHours(23,59,59,999);
+    var f_iso = f_value.toISOString().substring(0, 10);
+    var t_iso = t_value.toISOString().substring(0, 10);
+    var req_url = data_url_{{ chart_instance.ID }} + "&from_date=" + f_iso + "&to_date=" + t_iso;
+    console.log("get_data", req_url);
+    $.getJSON(req_url, function( data ) {
+      var opt = {dataset: data};
+      c_{{ chart_instance.ID }}.setOption(opt);
+      data_range_{{ chart_instance.ID }}[0] = f;
+      data_range_{{ chart_instance.ID }}[1] = t;
+      c_{{ chart_instance.ID }}.dispatchAction({
+        type: 'dataZoom',
+        startValue: f_value.getTime(),
+        endValue: t_value.getTime()
+      });
+      c_{{ chart_instance.ID }}.hideLoading();
+    });
+    return;
+  }
+
+  // Move Chart
+  c_{{ chart_instance.ID }}.dispatchAction({
+    type: 'dataZoom',
+    startValue: f,
+    endValue: t
+  });
+}
+
+$( document ).ready(function() {
+
+  c_{{ chart_instance.ID }} = echarts.init(document.getElementById('{{ chart_instance.ID }}'){% if False %}, "{{ chart_instance.get_theme() }}"{% endif %});
+  c_{{ chart_instance.ID }}.setOption(init_options_{{ chart_instance.ID }});
+  $(window).on('resize', function(){
+    resize_c_{{ chart_instance.ID }}();
+  });
+  setTimeout(function(){ resize_c_{{ chart_instance.ID }}(); }, 50);
+
+  $("#{{ chart_instance.ID }}_slider").dateRangeSlider({
+    bounds:{
+        min: dt_min_{{ chart_instance.ID }},
+        max: dt_max_{{ chart_instance.ID }}
+    },
+    defaultValues:{
+        min: data_range_{{ chart_instance.ID }}[0],
+        max: data_range_{{ chart_instance.ID }}[1]
+    },
+    range:{
+        min: {days: {{ chart_instance.min_range() }}},
+        max: {days: {{ chart_instance.max_range() }}}
+    }
+    });
+
+  c_{{ chart_instance.ID }}.on('dataZoom', function (params) {
+    var axis = c_{{ chart_instance.ID }}.getModel().option.xAxis[0];
+    var d1, d2 = null;
+    if (axis.rangeStart){
+      d1 = new Date(axis.rangeStart);
+    } else {
+      d1 = data_range_{{ chart_instance.ID }}[0];
+    }
+    if (axis.rangeEnd){
+      d2 = new Date(axis.rangeEnd);
+    } else {
+      d2 = data_range_{{ chart_instance.ID }}[1];
+    }
+    $("#{{ chart_instance.ID }}_slider").dateRangeSlider("values", d1, d2);
+    console.log(params);
+  });
+
+  c_{{ chart_instance.ID }}.on('restore', function (params) {
+    var axis = c_{{ chart_instance.ID }}.getModel().option.xAxis[0];
+    var d1 = data_range_{{ chart_instance.ID }}[0];
+    var d2 = data_range_{{ chart_instance.ID }}[1];
+    $("#{{ chart_instance.ID }}_slider").dateRangeSlider("values", d1, d2);
+    console.log("restore");
+  });
+
+  $("#{{ chart_instance.ID }}_slider").on("userValuesChanged", function(e, data){
+        current_range = [data.values.min, data.values.max];
+        console.log("Something moved. min: " + data.values.min + " max: " + data.values.max);
+        zoom_c_{{ chart_instance.ID }}(data.values.min, data.values.max);
+  });
+});
+</script>
