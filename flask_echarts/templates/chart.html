@@ -9,11 +9,14 @@ integrity="sha256-VazP97ZCwtekAsvgPBSUwPFKdrwD3unUfSGVYrahUqU="
 crossorigin="anonymous"></script>
 <script src="{{ url_for("echarts.echarts_lib_min") }}"></script>
 <script src="{{ url_for("echarts.slider_lib_min") }}"></script>
+<script src="{{ url_for("echarts.echarts_widget") }}"></script>
 
 <div>
 <div id="{{ chart_instance.ID }}" style="width: 100%; height:400px;"></div>
 <div style="width: 80%; margin: auto;" id="{{ chart_instance.ID }}_slider"></div>
 </div>
+
+<div id="mychart" style="height: 300px;"></div>
 
 <script>
 var days_back_{{ chart_instance.ID }} = {{ chart_instance.default_range() }};
@@ -30,10 +33,10 @@ function series_select_{{ chart_instance.ID }}() {
 
 }
 
-init_options_{{ chart_instance.ID }}['toolbox'].['feature']['series_select'] = {
+init_options_{{ chart_instance.ID }}['toolbox']['feature']['series_select'] = {
   show: true,
   title: 'My custom feature',
-  icon: 'image:path/to/image-inactive.png'
+  icon: 'image:path/to/image-inactive.png',
   onclick: function (){
       // do something
   }
@@ -136,6 +139,12 @@ $( document ).ready(function() {
         current_range = [data.values.min, data.values.max];
         console.log("Something moved. min: " + data.values.min + " max: " + data.values.max);
         zoom_c_{{ chart_instance.ID }}(data.values.min, data.values.max);
+  });
+
+  $("#mychart").etimeseries({
+    options: init_options_{{ chart_instance.ID }},
+    limits: {{ chart_instance.get_limits() | json }},
+    data_url: "{{ chart_instance.get_url() | safe }}"
   });
 });
 </script>

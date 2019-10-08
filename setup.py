@@ -15,8 +15,10 @@ TEST_REQS = [
 
 REQUIRED_PACKAGES = [
     'flask',
-    'werkzeug'
+    'werkzeug',
+    'pendulum'
 ]
+
 
 config = {
     'description': 'Flask echarts',

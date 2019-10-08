@@ -88,6 +88,16 @@ class BaseChart(object):
     def max_range(self):
         return self._max_days
 
+    def get_limits(self):
+        lims = self.get_iso_range_limits()
+        return {
+            "dt_min_iso": lims["min"],
+            "dt_max_iso": lims["max"],
+            "default_days": self.default_range(),
+            "min_days": self.min_range(),
+            "max_days": self.max_range()
+        }
+
     def get_series_def(self):
         out = []
         for s in self.series:

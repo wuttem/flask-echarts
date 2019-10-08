@@ -14,7 +14,7 @@ echarts_bp = Blueprint("echarts", __name__, url_prefix='/echarts')
 
 
 main_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-lib_dir = os.path.join(main_dir, "lib")
+lib_dir = os.path.join(main_dir, "static")
 main_template_dir = os.path.join(main_dir, "flask_echarts", "templates")
 
 
@@ -82,6 +82,10 @@ class Echarts(object):
 @echarts_bp.route('/echarts.min.js')
 def echarts_lib_min():
     return send_file(os.path.join(lib_dir, "echarts", "js", "echarts.min.js"), mimetype='text/javascript')
+
+@echarts_bp.route('/echarts.widget.js')
+def echarts_widget():
+    return send_file(os.path.join(lib_dir, "echarts", "js", "echarts.widget.js"), mimetype='text/javascript')
 
 @echarts_bp.route('/slider.min.js')
 def slider_lib_min():
