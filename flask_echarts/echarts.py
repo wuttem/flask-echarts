@@ -75,8 +75,8 @@ class Echarts(object):
         ctx = _app_ctx_stack.top
         # do somthing on teardown ...
 
-    def linechart(self, series, **kwargs):
-        return BaseChart(series, **kwargs)
+    def linechart(self, *args, **kwargs):
+        return BaseChart(*args, **kwargs)
 
 
 @echarts_bp.route('/echarts.min.js')

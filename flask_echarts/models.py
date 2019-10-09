@@ -10,7 +10,6 @@ from flask import render_template_string
 
 
 class BaseChart(object):
-    TITLE = None
     TOOLBOX = {
         "feature": {
             "dataZoom": {
@@ -19,32 +18,66 @@ class BaseChart(object):
             "restore": {},
             "saveAsImage": {}
         },
-        "show": True
+        "show": True,
+        "right": "5%"
     }
 
-    def __init__(self, series, min_days=7, default_days=14, max_days=90, **kwargs):
+    def __init__(self, title="", series=None, min_days=7, default_days=14, max_days=90, context=None, **kwargs):
         self.series = []
-        for s in series:
-            self.add_series(s)
+        self.title = title
+        if series:
+            for s in series:
+                self.add_series(s)
         from .echarts import render_chart
         self.render_function = render_chart
         self._range_limits = None
         self._default_days = default_days
         self._min_days = min_days
         self._max_days = max_days
+        self.context = {}
+        if context is not None:
+            self.context.update(context)
 
     @property
     def ID(self):
         return "someid"
 
-    def is_data_request(self):
-        if request.args.get("action") == "data":
-            if request.args.get("chart_id") == self.ID:
+    def is_post_request(self):
+        if request.method == "POST":
+            data = request.get_json()
+            if data["action"] and data["chart_id"] == self.ID:
+                self.handle_post_action(data)
                 return True
         return False
 
+    def enable_series(self, series_name):
+        for s in self.series:
+            if s.name == series_name:
+                s.active = True
+
+    def disable_series(self, series_name):
+        for s in self.series:
+            if s.name == series_name:
+                s.active = False
+
+    def handle_post_action(self, data):
+        self.context.update(data)
+        if "series" in data:
+            for series_name in data["series"]:
+                if data["series"][series_name]["active"]:
+                    self.enable_series(series_name)
+                else:
+                    self.disable_series(series_name)
+
+    def get_context_value(self, name, default=None):
+        if name in self.context:
+            return self.context[name]
+        if default is not None:
+            return default
+        raise KeyError("context value {} not found".format(name))
+
     def get_url(self):
-        return "{}?action=data&chart_id={}".format(request.path, self.ID)
+        return "{}".format(request.path)
 
     def get_value(self, name):
         if hasattr(self, name.upper()):
@@ -52,6 +85,12 @@ class BaseChart(object):
 
     def add_series(self, s):
         self.series.append(s)
+
+    @property
+    def active_series(self):
+        cnt = 0
+        out = [s for s in self.series if s.active]
+        return out[:5]
 
     def get_range_limits(self):
         if self._range_limits is None:
@@ -79,6 +118,12 @@ class BaseChart(object):
         l = self.get_range_limits()
         return dict(min=l["min"].isoformat(), max=l["max"].isoformat())
 
+    def get_series_info(self):
+        out = {}
+        for s in self.series:
+            out[s.name] = {"active": s.active, "foo": "bar"}
+        return out
+
     def default_range(self):
         return self._default_days
 
@@ -100,7 +145,7 @@ class BaseChart(object):
 
     def get_series_def(self):
         out = []
-        for s in self.series:
+        for s in self.active_series:
             out.append({
                 "name": s.name,
                 "type": s.series_type,
@@ -114,22 +159,21 @@ class BaseChart(object):
         limits = self.get_range_limits()
         d2 = limits["max"].end_of('day')
         d1 = d2.subtract(days=self.default_range()).start_of("day")
-        if request:
-            r_d1 = request.args.get("from_date", None)
-            r_d2 = request.args.get("to_date", None)
-            if r_d1:
-                d1 = pendulum.parse(r_d1)
-                d1 = d1.start_of('day')
-            if r_d2:
-                d2 = pendulum.parse(r_d2)
-                d2 = d2.end_of('day')
+        r_d1 = self.get_context_value("from_date", False)
+        r_d2 = self.get_context_value("to_date", False)
+        if r_d1:
+            d1 = pendulum.parse(r_d1)
+            d1 = d1.start_of('day')
+        if r_d2:
+            d2 = pendulum.parse(r_d2)
+            d2 = d2.end_of('day')
         return dict(min=d1, max=d2)
 
     def get_dataset(self):
-        series_count = len(self.series)
+        series_count = len(self.active_series)
         series_names = []
         o = defaultdict(lambda: [0] * series_count)
-        for i, s in enumerate(self.series):
+        for i, s in enumerate(self.active_series):
             series_names.append(s.name)
             for dt, value in s._get_data(**self.calculate_range()):
                 o[dt][i] = value
@@ -143,8 +187,10 @@ class BaseChart(object):
     def build_options(self):
         return {
             "title": {
-                "text": self.get_value("title")
+                "text": self.title,
+                "left": "5%"
             },
+            "useUTC": True,
             "dataset": self.get_dataset(),
             "toolbox": self.get_value("toolbox"),
             "tooltip": {"trigger": 'axis'},
@@ -155,6 +201,11 @@ class BaseChart(object):
             "xAxis": {
                 "type": 'time',
                 "minInterval": 12 * 60 * 60 * 1000
+            },
+            "grid": {
+                "left": "5%",
+                "right": "5%",
+                "top": 40
             },
             "yAxis": {"type": "value"},
             "series": self.get_series_def()}
@@ -167,9 +218,10 @@ class BaseChart(object):
 
 
 class TimeSeries(object):
-    def __init__(self, name, series_type="line"):
+    def __init__(self, name, active=True, series_type="line"):
         self.name = name
         self.series_type = series_type
+        self.active = active
 
     def _get_data(self, min, max):
         return self.get_data(min, max)

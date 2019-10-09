@@ -29,10 +29,10 @@ class MySeries(TimeSeries):
         return out
 
 
-@app.route('/')
+@app.route('/', methods=['POST', 'GET'])
 def home():
-    data = [MySeries("temp"), MySeries("act")]
-    linechart = e.linechart(data)
-    if linechart.is_data_request():
+    data = [MySeries("temp"), MySeries("act"), MySeries("ph", active=False)]
+    linechart = e.linechart("MY Chart", series=data)
+    if linechart.is_post_request():
         return linechart.data()
     return linechart.render()
