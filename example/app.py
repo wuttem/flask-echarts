@@ -4,12 +4,12 @@
 import pendulum
 import random
 
-from flask import Flask
+from flask import Flask, render_template
 from flask_echarts import Echarts, TimeSeries
 
 
 e = Echarts()
-app = Flask(__name__)
+app = Flask(__name__, template_folder=".")
 e.init_app(app)
 
 
@@ -32,7 +32,7 @@ class MySeries(TimeSeries):
 @app.route('/', methods=['POST', 'GET'])
 def home():
     data = [MySeries("temp"), MySeries("act"), MySeries("ph", active=False)]
-    linechart = e.linechart("MY Chart", series=data)
+    linechart = e.linechart("My Chart", series=data)
     if linechart.is_post_request():
         return linechart.data()
-    return linechart.render()
+    return render_template("template.html", chart=linechart)

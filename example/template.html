@@ -1,0 +1,10 @@
+{{ jquery_cdn }}
+{{ jquery_ui_cdn }}
+{{ jquery_ui_css_cdn}}
+{{ echarts_cdn }}
+
+<link href="{{ url_for("echarts.echarts_css") }}" rel="stylesheet" />
+<script src="{{ url_for("echarts.echarts_javascript") }}"></script>
+
+<div id="mydivid" style="height: 400px;"></div>
+{{ chart.render("mydivid") }}

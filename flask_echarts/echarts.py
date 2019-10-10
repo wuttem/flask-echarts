@@ -5,7 +5,7 @@ import logging
 import os
 import json
 
-from flask import Blueprint, Response, Markup, render_template_string, send_file
+from flask import Blueprint, Response, Markup, render_template_string, send_file, make_response
 from flask import current_app, _app_ctx_stack
 
 
@@ -46,9 +46,17 @@ def echarts_javascript_context():
     return {"echarts_javascript": my_javascript}
 
 
-def render_chart(chart, template="chart.html"):
+def cdn_tags_context():
+    jquery = Markup('<script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>')
+    jquery_ui = Markup('<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js" integrity="sha256-VazP97ZCwtekAsvgPBSUwPFKdrwD3unUfSGVYrahUqU=" crossorigin="anonymous"></script>')
+    jquery_ui_css = Markup('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/themes/base/jquery-ui.min.css" integrity="sha256-sEGfrwMkIjbgTBwGLVK38BG/XwIiNC/EAG9Rzsfda6A=" crossorigin="anonymous" />')
+    echarts = Markup('<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/4.3.0/echarts-en.min.js" integrity="sha256-0BLhrT+xIfvJO+8OfHf8iWMDzUmoL+lXNyswCl7ZUlY=" crossorigin="anonymous"></script>')
+    return {"jquery_cdn": jquery, "jquery_ui_cdn": jquery_ui, "jquery_ui_css_cdn": jquery_ui_css, "echarts_cdn": echarts}
+
+
+def render_chart(chart, div_id, template="chart.html"):
     with open(os.path.join(main_template_dir, template), 'r') as tfile:
-        return render_template_string(tfile.read(), chart_instance=chart)
+        return Markup(render_template_string(tfile.read(), chart_instance=chart, div_id=div_id))
 
 
 class Echarts(object):
@@ -67,6 +75,7 @@ class Echarts(object):
         for n, func in json_filter().items():
             app.jinja_env.filters[n] = func
         app.context_processor(echarts_javascript_context)
+        app.context_processor(cdn_tags_context)
 
         # add teardown
         app.teardown_appcontext(self.teardown)
@@ -91,10 +100,19 @@ def echarts_widget():
 def slider_lib_min():
     return send_file(os.path.join(lib_dir, "slider", "js", "jQDateRangeSlider.min.js"), mimetype='text/javascript')
 
-@echarts_bp.route('/slider.css')
-def slider_css():
+@echarts_bp.route('/echarts.css')
+def echarts_css():
     return send_file(os.path.join(lib_dir, "slider", "css", "style.css"), mimetype='text/css')
 
 @echarts_bp.route('/icons-classic/<imagename>.png')
 def slider_img(imagename):
     return send_file(os.path.join(lib_dir, "slider", "css", "icons-classic", "{}.png".format(imagename)))
+
+@echarts_bp.route('/flask_echarts.js')
+def echarts_javascript():
+    with open(os.path.join(lib_dir, "slider", "js", "jQDateRangeSlider.min.js"), 'r') as j_file1:
+        with open(os.path.join(lib_dir, "echarts", "js", "echarts.widget.js"), 'r') as j_file2:
+            full_js = j_file1.read() + "\n" + j_file2.read()
+            response = make_response(full_js)
+            response.headers.set('Content-Type', 'text/javascript')
+            return response

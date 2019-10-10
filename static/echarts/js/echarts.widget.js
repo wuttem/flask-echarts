@@ -36,21 +36,38 @@ $.widget( "custom.etimeseries", {
       this.options.dialog.empty();
       var content = jQuery('<div/>');
       $.each(this.options.series_info, function( key, value ) {
-        var p = content.append(jQuery('<p/>'))
-        var cb = p.append(jQuery('<input/>', {type: "checkbox", id: "cb_" + key}))
+        var p = jQuery('<p/>')
+        var cb = jQuery('<input/>', {type: "checkbox", id: "cb_" + key, checked: value.active})
+        cb.data("key", key)
+        p.append(cb);
         p.append(key);
         content.append(p);
-        //content.append($("<p><input type='checkbox' id='cb_" + key + "' ><label for='cb_" + key + "'>" + key + "</label></p>"))
       });
       content.appendTo(this.options.dialog);
       this.options.dialog.dialog("open");
     },
 
     _save_dialog: function() {
-      d = this.options.dialog;
-      d.children("input:checkbox").each(function( index ) {
-        console.log( index + ": " + $( this ).text() );
+      var d = this.options.dialog;
+      var changed = false;
+      var s = this.options.series_info;
+      var r = this.options.range;
+      d.find("input[type=checkbox]").each(function( index ) {
+        console.log( index + ": " + $( this ).data("key") );
+        var k = $( this ).data("key");
+        var v = $( this )[0].checked;
+        console.log($( this ));
+        if (s[k].active != v)
+        {
+          changed = true;
+          s[k].active = v;
+        }
+        console.log(s[k]);
       });
+      if (changed) {
+        setTimeout(this.load_data.bind(this, r[0], r[1], true), 10);
+      }
+      d.dialog('close');
     },
 
     _create_dialog: function() {
@@ -59,12 +76,11 @@ $.widget( "custom.etimeseries", {
         "id": dialog_id,
         "class": 'etimeseries-dialog',
         "style": "display: none;",
-        "title": "Mein toller Dialog"});
-      var self = this;
+        "title": "Settings"});
       dialog.dialog({
         autoOpen: false,
         buttons: {
-          "save": function() {self._save_dialog()}
+          "save": this._save_dialog.bind(this)
         }
       });
       return dialog;
@@ -180,7 +196,7 @@ $.widget( "custom.etimeseries", {
       // this.set_zoom(data.values.min, data.values.max, false);
     },
 
-    load_data: function(f, t) {
+    load_data: function(f, t, reload=false) {
       var chart = this.options.chart;
       chart.showLoading();
       var f_value = new Date(f);
@@ -190,7 +206,9 @@ $.widget( "custom.etimeseries", {
       var f_iso = f_value.toISOString().substring(0, 10);
       var t_iso = t_value.toISOString().substring(0, 10);
       var req_url = this.options.data_url;
-      var req_data = {from_date: f_iso, to_date: t_iso, action: "data", chart_id: this.options.id};
+      var req_data = {from_date: f_iso, to_date: t_iso, action: "data",
+                      chart_id: this.options.id, series: this.options.series_info,
+                      "reload": reload};
       console.log("get_data", req_url);
 
       var self = this;
@@ -201,8 +219,14 @@ $.widget( "custom.etimeseries", {
         contentType: "application/json; charset=utf-8",
         dataType: "json",
         success: function(data){
-          var opt = {dataset: data};
-          chart.setOption(opt);
+          var opt = data;
+          if (opt["reload"]) {
+            self.options.options = self._adjust_options(opt)
+            chart.clear();
+            chart.setOption(self.options.options);
+          } else {
+            chart.setOption(opt);
+          }
           self.options.range[0] = f;
           self.options.range[1] = t;
           chart.dispatchAction({
