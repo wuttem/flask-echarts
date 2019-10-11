@@ -7,7 +7,7 @@ Build on Echarts + JQDateRangeSlider.
 
 App:
 
-````python
+```python
 #!/usr/bin/python
 # coding: utf8
 
@@ -48,9 +48,9 @@ def home():
     return render_template("template.html", chart=linechart)
 ```
 
-Template
+Template HTML
 
-```
+```html
 {{ jquery_cdn }}
 {{ jquery_ui_cdn }}
 {{ jquery_ui_css_cdn}}
