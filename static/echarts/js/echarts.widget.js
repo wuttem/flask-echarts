@@ -70,6 +70,11 @@ $.widget( "custom.etimeseries", {
       d.dialog('close');
     },
 
+    reload: function() {
+      var r = this.options.range;
+      this.load_data(r[0], r[1], true);
+    },
+
     _create_dialog: function() {
       var dialog_id = uniqId();
       var dialog = jQuery('<div/>', {
@@ -130,11 +135,17 @@ $.widget( "custom.etimeseries", {
         chart_div.appendTo(this.element);
         if (show_timeline) {
             timeline_div.appendTo(this.element);
+            chart_div.height(height - timeline_div.height());
         }
+
         var dialog_div = this._create_dialog();
         this.options.dialog = dialog_div;
 
-        var chart = echarts.init(chart_div[ 0 ]);
+        if (this.options.theme != "default"){
+          var chart = echarts.init(chart_div[ 0 ], this.options.theme);
+        } else {
+          var chart = echarts.init(chart_div[ 0 ]);
+        }
         chart.setOption(o);
 
         // On Chart Zoom

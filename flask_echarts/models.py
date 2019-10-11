@@ -22,9 +22,11 @@ class BaseChart(object):
         "right": "5%"
     }
 
-    def __init__(self, title="", series=None, min_days=7, default_days=14, max_days=90, context=None, **kwargs):
+    def __init__(self, title="", series=None, min_days=7, default_days=14,
+                 max_days=90, context=None, initial_data=True, theme=None, **kwargs):
         self.series = []
         self.title = title
+        self.theme = theme
         if series:
             for s in series:
                 self.add_series(s)
@@ -36,6 +38,7 @@ class BaseChart(object):
         self._max_days = max_days
         self.context = {}
         self.series_changed = False
+        self.initial_data = initial_data
         if context is not None:
             self.context.update(context)
 
@@ -187,14 +190,14 @@ class BaseChart(object):
             source.append(line)
         return {"source": source, "dimensions": dimensions}
 
-    def build_options(self):
+    def build_options(self, with_data=True):
         return {
             "title": {
                 "text": self.title,
                 "left": "5%"
             },
             "useUTC": True,
-            "dataset": self.get_dataset(),
+            "dataset": self.get_dataset() if with_data else None,
             "toolbox": self.get_value("toolbox"),
             "tooltip": {"trigger": 'axis'},
             "legend": {
@@ -221,7 +224,7 @@ class BaseChart(object):
         out = {"reload": r}
         if r:
             print("change!!!")
-            out.update(self.build_options())
+            out.update(self.build_options(with_data=True))
         else:
             out["dataset"] = self.get_dataset()
         return jsonify(out)

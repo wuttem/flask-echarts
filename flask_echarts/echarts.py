@@ -60,14 +60,16 @@ def render_chart(chart, div_id, template="chart.html"):
 
 
 class Echarts(object):
-    def __init__(self, app=None):
+    def __init__(self, app=None, theme=None):
         self.app = app
+        self.default_theme = theme
         if app is not None:
             self.init_app(app)
 
     def init_app(self, app):
         app.config.setdefault('USE_CDN', False)
-
+        app.config.setdefault('ECHARTS_THEME', self.default_theme)
+        self.theme = app.config["ECHARTS_THEME"]
         # add routes
         app.register_blueprint(echarts_bp)
 
@@ -85,6 +87,8 @@ class Echarts(object):
         # do somthing on teardown ...
 
     def linechart(self, *args, **kwargs):
+        if "theme" not in kwargs:
+            return BaseChart(*args, theme=self.theme, **kwargs)
         return BaseChart(*args, **kwargs)
 
 
