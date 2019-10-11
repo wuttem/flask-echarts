@@ -66,14 +66,12 @@ class BaseChart(object):
 
     def handle_post_action(self, data):
         self.context.update(data)
-        print(data)
         if "series" in data:
             for series_name in data["series"]:
                 if data["series"][series_name]["active"]:
                     self.enable_series(series_name)
                 else:
                     self.disable_series(series_name)
-        print(self.active_series)
 
     def get_context_value(self, name, default=None):
         if name in self.context:
@@ -223,7 +221,6 @@ class BaseChart(object):
         r = self.get_context_value("reload", False)
         out = {"reload": r}
         if r:
-            print("change!!!")
             out.update(self.build_options(with_data=True))
         else:
             out["dataset"] = self.get_dataset()
